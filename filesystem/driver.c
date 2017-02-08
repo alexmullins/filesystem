@@ -97,6 +97,10 @@ int createDriverFile(char* name) {
 		fclose(fp);
 		return -1;
 	}
+	if (fseek(fp, 0L, SEEK_SET) < 0) {
+		fclose(fp);
+		return -1;
+	}
 	driverFile = fp;
 	return 1;
 }
