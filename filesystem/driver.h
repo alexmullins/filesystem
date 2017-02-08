@@ -1,28 +1,29 @@
-#include "stdio.h"
-#include "stdlib.h"
+#ifndef DRIVER_H
+#define DRIVER_H
+
 #include "stdint.h"
 
-#ifndef _DRIVER_H
-#define _DRIVER_H
-
-
-extern FILE* driverFile;
+/*
+	Error Codes
+*/
+#define BAD_ADDRESS -1
+#define NO_DRIVER_FILE -2
 
 /* 
 	EraseAllSectors will clear all the memory in the underlying 
 	driver file. Will return 1 on success and a negative number 
-	on an error. The negative return value can idetify which
+	on an error. The negative return value can identify which
 	error occured. 
 */
 int EraseAllSectors();
 
 /*
-	EraseSector will clear all the memory in the underlying
-	driver file. Will return 1 on success and a negative number
-	on an error. The negative return value can idetify which
-	error occured.
+	EraseSector will clear all the memory in the specified sector
+	of the underlying driver file. Will return 1 on success and 
+	a negative number on an error. The negative return value can
+	identify which error occured.
 */
-int EraseSector(int n);
+int EraseSector(uint32_t n);
 
 
 /*
@@ -41,5 +42,5 @@ int ReadWord(uint32_t address);
 */
 int WriteWord(uint32_t address, uint16_t value);
 
-#endif // !_DRIVER_H
+#endif // !DRIVER_H
 

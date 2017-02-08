@@ -24,4 +24,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="docs\driver_design.txt" />
+  </ItemGroup>
 </Project>
