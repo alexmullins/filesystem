@@ -1,1 +1,11 @@
 Driver Design Doc
+
+1. Calculating begin and end address given a sector number:
+	begin = i * SECTOR_SIZE
+	end = ((i + 1) * SECTOR_SIZE) - 1
+
+2 Write operation is:
+	Zero Memory:	1111 1111
+	Value(55):		0011 0111
+				AND----------
+	New Memory:		0011 0111 == 55
