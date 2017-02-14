@@ -23,7 +23,7 @@ static FILE* driverFile = NULL;
 
 int32_t EraseAllSectors() 
 {
-	if (_ensure_driver_file_open() < 0) {
+	if (_ensure_driver_file_open() == -1) {
 		return ERR_DRIVER_FILE;
 	}
 	if (_erase_all_sectors() < 0) {
@@ -95,6 +95,10 @@ int32_t ReadWord(uint32_t address)
 	if (address % 2 != 0) {
 		return ERR_BAD_ADDRESS;
 	}
+	if (address >= DRIVER_FILE_SIZE) {
+		return ERR_BAD_ADDRESS;
+	}
+
 	int val = _read_word(address);
 	if (val == INT32_MIN) {
 		return ERR_READ;
@@ -123,6 +127,10 @@ int32_t WriteWord(uint32_t address, uint16_t value)
 	if (address % 2 != 0) {
 		return ERR_BAD_ADDRESS;
 	}
+	if (address >= DRIVER_FILE_SIZE) {
+		return ERR_BAD_ADDRESS;
+	}
+
 	int32_t old = _read_word(address);
 	if (old == INT32_MIN) {
 		return ERR_READ;
