@@ -147,7 +147,9 @@ int32_t _write_word(uint32_t address, uint16_t value, uint16_t old)
 		return -1;
 	}
 	uint16_t newVal = old & value;
-	printf("newVal: %d\n", newVal);
+	if (newVal != value) {
+		printf("_write_word: newVal(%d) != value(%d) \n", newVal, value);
+	}
 	int ret = fwrite(&newVal, sizeof(newVal), 1, driverFile);
 	if (ret < 1) {
 		return -1;
