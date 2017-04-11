@@ -38,7 +38,7 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		open_file->mode = mode;
 		open_file->fpos = 0;
 		open_file->dirty = false;
-		fs_load_file_data(file, open_file->buffer, MAX_FILE_SIZE); // TODO: prolly should check for error
+		fs_load_file_data(open_file->file, open_file->buffer, MAX_FILE_SIZE); // TODO: prolly should check for error
 		open_file->fsize = fs_file_size(open_file->file);
 		return open_file;
 	}
@@ -98,6 +98,7 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		open_file->fpos = size;
 		open_file->fsize = size;
 		open_file->dirty = true;
+		fs_load_file_data(open_file->file, open_file->buffer, MAX_FILE_SIZE); // TODO: prolly should check for error
 		return open_file;
 	}
 	else {
