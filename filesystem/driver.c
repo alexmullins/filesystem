@@ -1,8 +1,9 @@
 #pragma warning(disable:4996) // Used to turn off warnings about fopen
 
 #include "driver.h"
-#include "stdio.h"
-#include "io.h"
+#include "logger.h"
+#include <stdio.h>
+#include <io.h>
 
 #define KB 1024
 #define SECTOR_SIZE 64 * KB
@@ -148,7 +149,9 @@ int32_t _write_word(uint32_t address, uint16_t value, uint16_t old)
 	}
 	uint16_t newVal = old & value;
 	if (newVal != value) {
-		printf("_write_word: newVal(%d) != value(%d) \n", newVal, value);
+		char msg[80];
+		sprintf_s(msg, 80, "_write_word: newVal(%d) != value(%d) \n", newVal, value);
+		logger("DRIVER", msg);
 	}
 	int ret = fwrite(&newVal, sizeof(newVal), 1, driverFile);
 	if (ret < 1) {
@@ -161,17 +164,16 @@ int32_t _ensure_driver_file_open()
 {
 	if (driverFile) {
 		// driverFile open
-		printf("Driver file already opened.\n");
 		return 1;
 	}
 	else {
 		// driverFile isn't open
 		if (_driver_file_exists("driver_file.dat") > 0) {
 			// driverFile exists and is appropriate length
-			printf("Driver file exists.\n");
+			logger("DRIVER", "Driver file exists.\n");
 			FILE* fp = fopen("driver_file.dat", "r+b");
 			if (fp == NULL) {
-				printf("Could not open driver file1.\n");
+				logger("DRIVER", "Could not open driver file1.\n");
 				return -1;
 			}
 			driverFile = fp;
@@ -179,7 +181,7 @@ int32_t _ensure_driver_file_open()
 		}
 		else {
 			// driverFile doesn't exist.
-			printf("Driver file doesn't exist.\n");
+			logger("DRIVER", "Driver file doesn't exist.\n");
 			return _create_driver_file("driver_file.dat");
 		}
 	}
@@ -191,7 +193,7 @@ int32_t _driver_file_exists(char* name)
 		// file exists, now open and check size.
 		FILE* fp = fopen(name, "r+b");
 		if (fp == NULL) {
-			printf("Could not open driver file2.\n");
+			logger("DRIVER", "Could not open driver file2.\n");
 			return -1;
 		}
 		if (fseek(fp, DRIVER_FILE_SIZE-1, SEEK_SET) != 0) {
@@ -215,7 +217,7 @@ int32_t _create_driver_file(char* name)
 {
 	FILE* fp = fopen(name, "w+b");
 	if (fp == NULL) {
-		printf("Could not open driver file3.\n");
+		logger("DRIVER", "Could not open driver file3.\n");
 		return -1;
 	}
 	driverFile = fp;

@@ -149,11 +149,13 @@
     <ClInclude Include="driver.h" />
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="fio.h" />
+    <ClInclude Include="logger.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="driver.c" />
     <ClCompile Include="filesystem.c" />
     <ClCompile Include="fio.c" />
+    <ClCompile Include="logger.c" />
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stddef.h"
+#include <stddef.h>
 
 typedef struct CSC322FILE CSC322FILE;
 

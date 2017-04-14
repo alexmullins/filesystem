@@ -1,10 +1,10 @@
 #include "fio.h"
 #include "filesystem.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
-#include "stdlib.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
+#include "logger.h"
 
 #define MAX_FILE_SIZE 63*1024
 #define ERR_FILESYSTEM -2
@@ -50,7 +50,7 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		if (file == NULL) {
 			file = fs_create_file(filename);
 			if (file == NULL) {
-				printf("CSC322_fopen: failed to create file.");
+				logger("FIO", "CSC322_fopen: failed to create file.");
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
@@ -69,7 +69,8 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		if (file == NULL) {
 			file = fs_create_file(filename);
 			if (file == NULL) {
-				printf("CSC322_fopen: failed to create file.");
+				logger("FIO", "CSC322_fopen: failed to create file.");
+				return NULL;
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
@@ -88,7 +89,7 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		if (file == NULL) {
 			file = fs_create_file(filename);
 			if (file == NULL) {
-				printf("CSC322_fopen: failed to create file.");
+				logger("FIO", "CSC322_fopen: failed to create file.");
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file

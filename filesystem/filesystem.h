@@ -1,6 +1,6 @@
 #pragma once
-#include "stdbool.h"
-#include "stdint.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 typedef struct fs_file fs_file;
 
