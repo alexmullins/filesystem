@@ -6,10 +6,14 @@
 #include <malloc.h>
 
 static bool failed = false;
+static uint16_t nextEntryLocation = 0;
 static fs_file* FILE_SYSTEM_LIST;
 
 #define TYPE_HEADER 0
 #define TYPE_DATA_CHUNK 1
+
+#define STATUS_USED 1
+#define STATUS_INVALID 2
 
 typedef struct log_entry {
 	uint16_t log_id;
@@ -34,7 +38,7 @@ bool log_entry_is_used(log_entry* entry);
 bool log_entry_is_valid( log_entry* entry);
 bool log_entry_is_header_type(log_entry* entry);
 bool log_entry_is_data_chunk_type(log_entry* entry);
-bool fs_stitch_together(log_entry* header_list, log_entry* data_chunk_list);
+void fs_stitch_together(log_entry* header_list, log_entry* data_chunk_list);
 
 bool fs_init()
 {
@@ -60,6 +64,7 @@ bool fs_init()
 			return false;
 		}
 		if (!log_entry_is_used(entry)) {
+			nextEntryLocation = i;
 			free(entry);
 			break;
 		}
@@ -74,7 +79,7 @@ bool fs_init()
 			SGLIB_DL_LIST_ADD(struct log_entry, data_chunk_list, entry, prev, next);
 		}
 		else {
-			logger("FILESYSTEM", "Found unknownn log entry type");
+			logger("FILESYSTEM", "Found unknown log entry type");
 			free(entry);
 			continue;
 		}
@@ -83,16 +88,15 @@ bool fs_init()
 	int hlen, dlen = 0;
 	SGLIB_DL_LIST_LEN(struct log_entry, header_list, prev, next, hlen);
 	SGLIB_DL_LIST_LEN(struct log_entry, data_chunk_list, prev, next, dlen);
-	if (hlen == 0) {
-		logger("FILESYSTEM", "Found no header entries.");
-	}
 	if (dlen == 0) {
 		logger("FILESYSTEM", "Found no data chunk entries.");
 	}
-
-	if (!fs_stitch_together(header_list, data_chunk_list)) {
-		logger("FILESYSTEM", "Couldn't stitch together log entries.");
+	if (hlen == 0) {
+		logger("FILESYSTEM", "Found no header entries.");
 	}
+	
+	fs_stitch_together(header_list, data_chunk_list); // should clean up leftover entries in lists.
+
 	return true;
 }
 
@@ -133,25 +137,25 @@ log_entry * log_deserialize_entry(int index)
 
 bool log_entry_is_used(log_entry * entry)
 {
-	return false;
+	return ((entry->status & STATUS_USED) == 0);
 }
 
 bool log_entry_is_valid(log_entry * entry)
 {
-	return false;
+	return ((entry->status & STATUS_INVALID) > 0);
 }
 
 bool log_entry_is_header_type(log_entry * entry)
 {
-	return false;
+	return (entry->type == TYPE_HEADER);
 }
 
 bool log_entry_is_data_chunk_type(log_entry * entry)
 {
-	return false;
+	return (entry->type == TYPE_DATA_CHUNK);
 }
 
-bool fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
+void fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
 {
 	return false;
 }
