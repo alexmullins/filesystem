@@ -150,6 +150,7 @@
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="fio.h" />
     <ClInclude Include="logger.h" />
+    <ClInclude Include="sglib.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="driver.c" />

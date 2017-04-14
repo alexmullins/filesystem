@@ -5,11 +5,6 @@
 #include <stdio.h>
 #include <io.h>
 
-#define KB 1024
-#define SECTOR_SIZE 64 * KB
-#define SECTOR_NUM 20
-#define DRIVER_FILE_SIZE SECTOR_SIZE * SECTOR_NUM
-
 int32_t _erase_all_sectors();
 int32_t _erase_sector(uint32_t sector);
 int32_t _sector_to_begin_addr(uint32_t sector);

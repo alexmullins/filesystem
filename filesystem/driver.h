@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+#define KB 1024
+#define SECTOR_SIZE 64 * KB
+#define SECTOR_NUM 20
+#define DRIVER_FILE_SIZE SECTOR_SIZE * SECTOR_NUM
+
 /*
 Error Codes
 */

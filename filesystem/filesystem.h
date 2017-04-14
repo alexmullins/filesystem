@@ -2,6 +2,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define LOG_ENTRY_SIZE 256
+#define LOG_ENTRIES_PER_SECTOR (SECTOR_SIZE / LOG_ENTRY_SIZE)
+#define LOG_TOTAL_ENTRIES (LOG_ENTRIES_PER_SECTOR * SECTOR_NUM)
+
 typedef struct fs_file fs_file;
 
 /*

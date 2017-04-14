@@ -1,17 +1,20 @@
 #include "filesystem.h"
+#include "driver.h"
 #include <stddef.h>
 
-#define MAX_FILES 256
+static fs_file* FILE_SYSTEM_LIST;
 
-static fs_file* FILE_SYSTEM[MAX_FILES];
-
-typedef enum entry_type { HEADER, DATA_CHUNK } entry_type;
+#define TYPE_HEADER 0
+#define TYPE_DATA_CHUNK 1
 
 struct log_entry {
-	uint64_t log_id;
-	uint64_t object_id;
-	uint64_t chunk_id;
-	entry_type type;
+	uint16_t log_id;
+	uint16_t status;
+	uint16_t object_id;
+	uint16_t chunk_id;
+	uint16_t type;
+	struct log_entry* next;
+	struct log_entry* prev;
 };
 
 struct fs_file {
@@ -19,11 +22,20 @@ struct fs_file {
 	uint64_t data_size;
 	struct log_entry header;
 	int num_data_chunks;
-	struct log_entry* data_chunk_array;
+	struct log_entry* data_chunk_list;
 };
 
 bool fs_init()
 {
+	// Loop until we find first unused entry
+	// For each entry:
+	//		1. Create a log_entry struct from the data read
+	//		2. Add to either temp header_list or temp data_chunk_list
+	// For each entry in the header_list:
+	//		1. Find corresponding data chunks in the data_chunk_list
+	//		2. Create fs_file object from the header and data_chunks
+
+
 	return true;
 }
 

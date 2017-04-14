@@ -1,10 +1,15 @@
 #include <stdio.h>
 #include "driver.h"
+#include "filesystem.h"
 
 void runDriverTests();
+void runFileSystemTests();
 
 int main(int argc, char** argv) {
+	printf("=== DRIVER TESTS ===\n");
 	runDriverTests();
+	printf("\n\n=== FILESYSTEM TESTS ===\n");
+	runFileSystemTests();
 	return 0;
 }
 
@@ -77,4 +82,9 @@ void runDriverTests() {
 	printf("Got expected error\n");
 
 	return;
+}
+
+void runFileSystemTests()
+{
+	printf("Num of log entries: %d\n", LOG_TOTAL_ENTRIES);
 }
