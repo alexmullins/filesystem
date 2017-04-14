@@ -105,11 +105,13 @@ int32_t ReadWord(uint32_t address)
 int32_t _read_word(uint32_t address) 
 {
 	if (fseek(driverFile, address, SEEK_SET) != 0) {
+		logger("DRIVER", "Problem seeking in driver file trying to read word.");
 		return INT32_MIN;
 	}
 	uint16_t val = 0;
 	int ret = fread(&val, sizeof(val), 1, driverFile);
 	if (ret < 1) {
+		logger("DRIVER", "Problem reading uint16_t from driver file.");
 		return INT32_MIN;
 	}
 	return val;
@@ -140,6 +142,7 @@ int32_t WriteWord(uint32_t address, uint16_t value)
 int32_t _write_word(uint32_t address, uint16_t value, uint16_t old) 
 {
 	if (fseek(driverFile, address, SEEK_SET) != 0) {
+		logger("DRIVER", "Problem seeking in driver file trying to write word.");
 		return -1;
 	}
 	uint16_t newVal = old & value;
@@ -150,6 +153,7 @@ int32_t _write_word(uint32_t address, uint16_t value, uint16_t old)
 	}
 	int ret = fwrite(&newVal, sizeof(newVal), 1, driverFile);
 	if (ret < 1) {
+		logger("DRIVER", "Problem writing uint16_t in driver file.");
 		return -1;
 	}
 	return 1;
@@ -165,7 +169,6 @@ int32_t _ensure_driver_file_open()
 		// driverFile isn't open
 		if (_driver_file_exists("driver_file.dat") > 0) {
 			// driverFile exists and is appropriate length
-			logger("DRIVER", "Driver file exists.\n");
 			FILE* fp = fopen("driver_file.dat", "r+b");
 			if (fp == NULL) {
 				logger("DRIVER", "Could not open driver file1.\n");
