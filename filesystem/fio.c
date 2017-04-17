@@ -134,6 +134,7 @@ int CSC322_fread(void* buffer, size_t nBytes, CSC322FILE* stream)
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
+	// Check mode
 	return 0;
 }
 
@@ -145,6 +146,7 @@ int CSC322_fwrite(void* buffer, size_t nBytes, CSC322FILE* stream)
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
+	// Check mode
 	return 0;
 }
 
@@ -156,6 +158,7 @@ int CSC322_fseek(CSC322FILE* stream, long offset, int origin)
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
+	// Check mode
 	return 0;
 }
 
