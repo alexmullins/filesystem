@@ -86,5 +86,13 @@ void runDriverTests() {
 
 void runFileSystemTests()
 {
+	EraseAllSectors();
 	printf("Num of log entries: %d\n", LOG_TOTAL_ENTRIES);
+	log_first_entry();
+	uint8_t buffer[2];
+	buffer[0] = 3;
+	buffer[1] = 0;
+	uint16_t word = *(uint16_t*)&buffer;
+	printf("WORD: %d\n", word);
+	printf("5/2 = %d\n", 5 / 2);
 }

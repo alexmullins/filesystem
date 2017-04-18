@@ -8,3 +8,5 @@
 //#define LOG_STDOUT
 
 void logger(const char* tag, const char* msg);
+
+// logger_log_fs()

@@ -37,9 +37,8 @@ int32_t EraseSector(uint32_t n);
 
 /*
 ReadWord will attempt to read an uint16 (2bytes) from 
-the address given. Will return an error code with 0
-or greater indicating success and a negative value indicating 
-an error occurred. 
+the address given. Will return INT32_MIN if an error occured
+or the value that was read.
 */
 int32_t ReadWord(uint32_t address);
 

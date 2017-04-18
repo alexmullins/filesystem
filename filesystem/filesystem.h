@@ -49,3 +49,5 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size);
 	filesystem with the given filename.
 */
 bool fs_delete_file(const char* filename);
+
+void log_first_entry();

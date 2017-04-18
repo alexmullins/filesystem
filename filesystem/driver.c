@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <stdio.h>
 #include <io.h>
+#include <stdint.h>
 
 int32_t _erase_all_sectors();
 int32_t _erase_sector(uint32_t sector);
@@ -96,9 +97,6 @@ int32_t ReadWord(uint32_t address)
 	}
 
 	int val = _read_word(address);
-	if (val == INT32_MIN) {
-		return ERR_READ;
-	}
 	return val;
 }
 
