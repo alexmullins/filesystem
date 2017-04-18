@@ -34,7 +34,7 @@ static bool failed = false;
 static bool success = false;
 static uint32_t nextEntryLocation = 0;
 static uint32_t nextObjectID = 0;
-static fs_file* FILE_SYSTEM_LIST;
+static fs_file* FILE_SYSTEM_LIST = NULL;
 
 /* ======= */
 /* Structs */
@@ -176,8 +176,15 @@ fs_file* fs_open_file(const char* filename)
 fs_file * fs_create_file(const char * filename)
 {
 	fs_file* file = calloc(1, sizeof(fs_file));
+	if (file == NULL) {
+		return NULL;
+	}
 	int str_len = strlen(filename) + 1;
 	char* buffer = calloc(1, str_len);
+	if (buffer == NULL) {
+		free(file);
+		return NULL;
+	}
 	memcpy(buffer, filename, str_len);
 	file->file_name = buffer;
 	SGLIB_DL_LIST_ADD(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
@@ -249,6 +256,9 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 		// need more chunks
 		for (int i = 0; i < diff; i++) {
 			log_entry* new_entry = calloc(1, sizeof(log_entry));
+			if (new_entry == NULL) {
+				return false;
+			}
 			new_entry->object_id = file->header->object_id;
 			max_chunk_id++;
 			new_entry->chunk_id = max_chunk_id;
@@ -392,6 +402,9 @@ bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
 	}
 	int total_size = LOG_ENTRY_COMMON_SIZE + payload_size;
 	uint16_t* buffer = calloc(1, total_size);
+	if (buffer == NULL) {
+		return false;
+	}
 	// status + object_id + chunk_id + type + payload_size
 	buffer[0] = entry->status;
 	buffer[1] = entry->object_id;
@@ -446,10 +459,14 @@ log_entry* log_deserialize_entry(int index)
 	return entry;
 }
 
+// TODO check callers to see if checking error
 uint8_t* log_load_payload(log_entry* entry) {
 	uint16_t payload_size = entry->payload_size;
 	uint16_t payload_size_fixed = payload_size;
 	uint8_t* buffer = calloc(payload_size, sizeof(uint8_t));
+	if (buffer == NULL) {
+		return NULL;
+	}
 	if (payload_size % 2 != 0) {
 		payload_size_fixed++;
 	}

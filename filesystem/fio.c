@@ -34,6 +34,9 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 			return NULL;
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
+		if (open_file == NULL) {
+			return NULL;
+		}
 		open_file->file = file;
 		open_file->mode = mode;
 		open_file->fpos = 0;
@@ -54,6 +57,9 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
+		if (open_file == NULL) {
+			return NULL;
+		}
 		open_file->file = file;
 		open_file->mode = mode;
 		open_file->fpos = 0;
@@ -74,6 +80,9 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
+		if (open_file == NULL) {
+			return NULL;
+		}
 		open_file->file = file;
 		open_file->mode = mode;
 		open_file->fpos = 0;
@@ -93,6 +102,9 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 			}
 		}
 		CSC322FILE* open_file = calloc(1, sizeof(CSC322FILE)); // TODO: must delete when close file
+		if (open_file == NULL) {
+			return NULL;
+		}
 		open_file->file = file;
 		open_file->mode = mode;
 		int64_t size = fs_file_size(open_file->file);
