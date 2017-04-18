@@ -98,8 +98,8 @@ bool fs_init()
 	struct log_entry* data_chunk_list = NULL;
 
 	uint32_t highObjID = 0;
-
-	for (int i = 0; i < LOG_TOTAL_ENTRIES; i++) {
+	int i = 0;
+	for (; i < LOG_TOTAL_ENTRIES; i++) {
 		entry = log_deserialize_entry(i);
 		if (entry == NULL) {
 			logger("FILESYSTEM", "Could not deserialize entry");
@@ -107,7 +107,6 @@ bool fs_init()
 			return false;
 		}
 		if (!log_entry_is_used(entry)) {
-			nextEntryLocation = i;
 			free(entry);
 			break;
 		}
@@ -130,6 +129,7 @@ bool fs_init()
 			highObjID = entry->object_id;
 		}
 	}
+	nextEntryLocation = i;
 	success = true;
 	highObjID++;
 	nextObjectID = highObjID;
