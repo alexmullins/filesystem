@@ -220,10 +220,10 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 		log_entry* entry = NULL;
 		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 			log_invalidate_entry(entry->log_id);
-		if (entry->chunk_id > max_chunk_id) {
-			max_chunk_id = entry->chunk_id;
-		}
-		num_of_data_chunks++;
+			if (entry->chunk_id > max_chunk_id) {
+				max_chunk_id = entry->chunk_id;
+			}
+			num_of_data_chunks++;
 		});
 	}
 	// Check if we need to write a new header
@@ -234,31 +234,25 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 		header->type = TYPE_HEADER;
 		header->payload_size = (uint16_t)strlen(file->file_name) + 1;
 		file->header = header;
-		log_serialize_entry(header, (uint8_t*)file->file_name); // will set the new log_id for us
+		if (!log_serialize_entry(header, (uint8_t*)file->file_name)) {
+			return false;
+		}
 	}
 	// Calculate the num of needed data chunks to hold size of data.
 	uint64_t num_of_data_chunks_needed = size / LOG_ENTRY_MAX_PAYLOAD_SIZE;
 	if (size % LOG_ENTRY_MAX_PAYLOAD_SIZE != 0) {
 		num_of_data_chunks_needed++;
 	}
-	max_chunk_id++;
 	uint64_t diff = num_of_data_chunks_needed - num_of_data_chunks;
 	if (diff > 0) {
 		// need more chunks
 		for (int i = 0; i < diff; i++) {
 			log_entry* new_entry = calloc(1, sizeof(log_entry));
 			new_entry->object_id = file->header->object_id;
-			new_entry->chunk_id = max_chunk_id;
 			max_chunk_id++;
+			new_entry->chunk_id = max_chunk_id;
 			new_entry->type = TYPE_DATA_CHUNK;
-			log_entry* last_entry = NULL;
-			SGLIB_DL_LIST_GET_LAST(struct log_entry, file->data_chunks, prev, next, last_entry);
-			if (last_entry == NULL) {
-				SGLIB_DL_LIST_ADD(struct log_entry, file->data_chunks, new_entry, prev, next);
-			}
-			else {
-				SGLIB_DL_LIST_ADD_AFTER(struct log_entry, last_entry, new_entry, prev, next);
-			}
+			SGLIB_DL_LIST_CONCAT(struct log_entry, file->data_chunks, new_entry, prev, next);
 		}
 	}
 	else if (diff < 0) {
@@ -288,7 +282,9 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 				entry->payload_size = (uint16_t)left;
 				left -= left;
 			}
-			log_serialize_entry(entry, (uint8_t*)current);
+			if (!log_serialize_entry(entry, (uint8_t*)current)) {
+				return false;
+			}
 			current = current + entry->payload_size;
 		}
 	});
@@ -310,6 +306,7 @@ bool fs_delete_file(const char * filename)
 		log_entry* entry = NULL;
 		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 			SGLIB_DL_LIST_DELETE(struct log_entry, file->data_chunks, entry, prev, next);
+			log_invalidate_entry(entry->log_id);
 			free(entry);
 		});
 	}
@@ -378,7 +375,11 @@ void fs_sort_files_data_chunks()
 /* ============= */
 
 bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
-	entry->log_id = log_get_next_log_id();
+	uint16_t nextLogID = log_get_next_log_id();
+	if (nextLogID >= LOG_TOTAL_ENTRIES) {
+		return false;
+	}
+	entry->log_id = nextLogID;
 	entry->status = 0xFFFF;
 	log_entry_set_used(entry);
 	uint32_t address = entry->log_id * LOG_ENTRY_SIZE;
@@ -395,7 +396,7 @@ bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
 	buffer[3] = entry->type;
 	buffer[4] = entry->payload_size;
 
-	buffer += LOG_ENTRY_COMMON_SIZE;
+	buffer += (LOG_ENTRY_COMMON_SIZE / 2);
 
 	memcpy(buffer, payload, payload_size);
 
