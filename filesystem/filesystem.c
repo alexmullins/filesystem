@@ -181,6 +181,7 @@ fs_file * fs_create_file(const char * filename)
 	memcpy(buffer, filename, str_len);
 	file->file_name = buffer;
 	SGLIB_DL_LIST_ADD(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
+	SGLIB_DL_LIST_SORT(struct fs_file, FILE_SYSTEM_LIST, FS_FILE_NAME_COMPARE, prev, next);
 	return file;
 }
 
@@ -328,6 +329,8 @@ void fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
 			return;
 		}
 		file->header = header;
+		// Speed up below by sorting data_chunk_list and get start and end of range
+		// where object_id match
 		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, data_chunk_list, data, prev, next, {
 			if (data->object_id == obj_id) {
 				SGLIB_DL_LIST_DELETE(struct log_entry, data_chunk_list, data, prev, next);
