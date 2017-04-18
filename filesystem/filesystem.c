@@ -133,7 +133,8 @@ bool fs_init()
 	success = true;
 	highObjID++;
 	nextObjectID = highObjID;
-	int hlen, dlen = 0;
+	int hlen = 0;
+	int dlen = 0;
 	SGLIB_DL_LIST_LEN(struct log_entry, header_list, prev, next, hlen);
 	SGLIB_DL_LIST_LEN(struct log_entry, data_chunk_list, prev, next, dlen);
 	if (dlen == 0) {
@@ -282,6 +283,9 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 
 	char* current = buffer;
 	uint64_t left = size;
+	if (left == 0) {
+		return true;
+	}
 	log_entry* entry = NULL;
 	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 		if (left > 0) {
@@ -412,9 +416,9 @@ bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
 	buffer[3] = entry->type;
 	buffer[4] = entry->payload_size;
 
-	buffer += (LOG_ENTRY_COMMON_SIZE / 2);
+	size_t offset = (LOG_ENTRY_COMMON_SIZE / 2);
 
-	memcpy(buffer, payload, payload_size);
+	memcpy(buffer + offset, payload, payload_size);
 
 	int num_words = total_size / 2;
 
@@ -481,7 +485,7 @@ uint8_t* log_load_payload(log_entry* entry) {
 			logger("FILESYSTEM", "ReadWord returned INT32_MIN while reading payload.");
 			return NULL;
 		}
-		uint8_t* p = (uint8_t*)word;
+		uint8_t* p = (uint8_t*)&word;
 		buffer[i] = p[0];
 		i++;
 		if (i == payload_size) { // break early if we are reading odd amount of data

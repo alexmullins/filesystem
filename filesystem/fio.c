@@ -53,6 +53,7 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 		if (file == NULL) {
 			file = fs_create_file(filename);
 			if (file == NULL) {
+				// need to delete file created since it will linger in FS
 				logger("FIO", "CSC322_fopen: failed to create file.");
 			}
 		}
@@ -146,8 +147,33 @@ int CSC322_fread(void* buffer, size_t nBytes, CSC322FILE* stream)
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
-	// Check mode
-	return 0;
+	if (nBytes == 0) {
+		return 0;
+	}
+	if (nBytes < 0) {
+		return -1;
+	}
+	// must be the correct mode to read
+	if (strcmp(stream->mode, "ab") == 0) {
+		return -1;
+	}
+	else if (strcmp(stream->mode, "wb") == 0) {
+		return -1;
+	}
+	// check we dont go over our limit
+	uint64_t futurePos = nBytes + stream->fpos;
+	if (futurePos >= stream->fsize) {
+		// read only up to the file size
+		futurePos = stream->fsize - 1;
+	}
+	// recalculate how much we will actually read
+	uint64_t willRead = futurePos - stream->fpos;
+	if (willRead == 0) {
+		return EOF;
+	}
+	memcpy(buffer, stream->buffer, (size_t)willRead);
+	stream->fpos = futurePos;
+	return (int)willRead;
 }
 
 int CSC322_fwrite(void* buffer, size_t nBytes, CSC322FILE* stream)
@@ -158,8 +184,27 @@ int CSC322_fwrite(void* buffer, size_t nBytes, CSC322FILE* stream)
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
-	// Check mode
-	return 0;
+	if (nBytes == 0) {
+		return 0;
+	}
+	if (nBytes < 0) {
+		return -1;
+	}
+	if (strcmp(stream->mode, "rb") == 0) {
+		return -1;
+	}
+	uint64_t roomLeft = MAX_FILE_SIZE - stream->fpos;
+	uint64_t willWrite = nBytes;
+	if (willWrite > roomLeft) {
+		willWrite = roomLeft;
+	}
+	memcpy(stream->buffer + stream->fpos, buffer, (size_t)willWrite);
+	stream->fpos = stream->fpos + willWrite;
+	if (stream->fpos > stream->fsize) {
+		stream->fsize = stream->fpos;
+	}
+	stream->dirty = true;
+	return (int)willWrite;
 }
 
 int CSC322_fseek(CSC322FILE* stream, long offset, int origin)
@@ -169,6 +214,35 @@ int CSC322_fseek(CSC322FILE* stream, long offset, int origin)
 	}
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
+	}
+	if (strcmp(stream->mode, "ab") == 0) {
+		return -1;
+	}
+
+	// = 0 == SEEK_SET
+	if (origin == 0) {
+		if (offset > MAX_FILE_SIZE || offset < 0) {
+			return -1;
+		}
+		stream->fpos = offset;
+	}
+	// = 1 == SEEK_CUR
+	else if (origin == 1) {
+		uint64_t temp = stream->fpos + offset;
+		if (temp > MAX_FILE_SIZE || offset < 0) {
+			return -1;
+		}
+		stream->fpos += offset;
+	}
+	// = 2 == SEEK_END
+	// http://en.cppreference.com/w/c/io/fseek
+	// "Binary streams are not required to support SEEK_END, in particular if additional null bytes are output."
+	else if (origin == 2) {
+		return -1;
+	}
+	else {
+		// error
+		return -1;
 	}
 	// Check mode
 	return 0;

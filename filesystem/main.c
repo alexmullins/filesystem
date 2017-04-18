@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include "driver.h"
-#include "filesystem.h"
+//#include "filesystem.h"
+#include "fio.h"
 
 void runDriverTests();
 void runFileSystemTests();
 
 int main(int argc, char** argv) {
-	printf("=== DRIVER TESTS ===\n");
-	runDriverTests();
+	/*printf("=== DRIVER TESTS ===\n");
+	runDriverTests();*/
 	printf("\n\n=== FILESYSTEM TESTS ===\n");
 	runFileSystemTests();
 	return 0;
@@ -86,7 +87,7 @@ void runDriverTests() {
 
 void runFileSystemTests()
 {
-	EraseAllSectors();
+	/*EraseAllSectors();
 	printf("Num of log entries: %d\n", LOG_TOTAL_ENTRIES);
 	log_first_entry();
 	uint8_t buffer[2];
@@ -94,5 +95,16 @@ void runFileSystemTests()
 	buffer[1] = 0;
 	uint16_t word = *(uint16_t*)&buffer;
 	printf("WORD: %d\n", word);
-	printf("5/2 = %d\n", 5 / 2);
+	printf("5/2 = %d\n", 5 / 2);*/
+	
+	//EraseAllSectors();
+	CSC322FILE* file = CSC322_fopen("hello.txt", "wb");
+	int ret = CSC322_fwrite("hellohellohello", 15, file);
+	if (ret < 0) {
+		printf("Error writing file.");
+	}
+	ret = CSC322_fclose(file);
+	if (ret < 0) {
+		printf("Error closing file.");
+	}
 }
