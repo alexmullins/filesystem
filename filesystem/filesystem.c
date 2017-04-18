@@ -7,11 +7,9 @@
 #include <string.h>
 #include <stdint.h>
 
-static bool failed = false;
-static bool success = false;
-static uint32_t nextEntryLocation = 0;
-static uint32_t nextObjectID = 0;
-static fs_file* FILE_SYSTEM_LIST;
+/* ======= */
+/* Defines */
+/* ======= */
 
 #define TYPE_HEADER 0
 #define TYPE_DATA_CHUNK 1
@@ -19,8 +17,28 @@ static fs_file* FILE_SYSTEM_LIST;
 #define STATUS_USED 1
 #define STATUS_INVALID 2
 
+#define STATUS_USED_VALUE 65534
+#define STATUS_INVALID_VALUE 65533
+
 #define LOG_ENTRY_COMMON_SIZE 10 // status + object_id + chunk_id + type + payload_size
-#define LOG_ENTRY_MAX_PAYLOAD_SIZE LOG_ENTRY_SIZE - LOG_ENTRY_COMMON_SIZE
+#define LOG_ENTRY_MAX_PAYLOAD_SIZE (LOG_ENTRY_SIZE - LOG_ENTRY_COMMON_SIZE)
+
+#define FS_FILE_NAME_COMPARE(f1, f2) (strcmp(f1->file_name, f2->file_name))
+#define FS_DATA_CHUNK_COMPARE(e1, e2) (e1->chunk_id - e2->chunk_id)
+
+/* ================ */
+/* Static Variables */
+/* ================ */
+
+static bool failed = false;
+static bool success = false;
+static uint32_t nextEntryLocation = 0;
+static uint32_t nextObjectID = 0;
+static fs_file* FILE_SYSTEM_LIST;
+
+/* ======= */
+/* Structs */
+/* ======= */
 
 typedef struct log_entry {
 	uint16_t log_id;
@@ -42,22 +60,30 @@ struct fs_file {
 	struct fs_file* prev;
 };
 
-log_entry* log_deserialize_entry(int index);
-bool log_entry_is_used(log_entry* entry);
-bool log_entry_is_valid( log_entry* entry);
-bool log_entry_is_header_type(log_entry* entry);
-bool log_entry_is_data_chunk_type(log_entry* entry);
+/* ====================== */
+/* Private Function Decls */
+/* ====================== */
+
 void fs_stitch_together(log_entry* header_list, log_entry* data_chunk_list);
 void fs_read_filenames_from_disk();
-bool log_invalidate_entry(int index);
-uint8_t* log_load_payload(log_entry* entry);
 void fs_sort_files_by_name();
 void fs_sort_files_data_chunks();
+
+bool log_entry_is_data_chunk_type(log_entry* entry);
+bool log_invalidate_entry(int index);
+uint8_t* log_load_payload(log_entry* entry);
+log_entry* log_deserialize_entry(int index);
+bool log_entry_is_used(log_entry* entry);
+bool log_entry_is_valid(log_entry* entry);
+bool log_entry_is_header_type(log_entry* entry);
 uint16_t log_get_next_obj_id();
 uint16_t log_get_next_log_id();
 bool log_serialize_entry(log_entry* entry, uint8_t* payload);
 void log_entry_set_used(log_entry* entry);
-void log_entry_set_valid(log_entry* entry);
+
+/* =================== */
+/* Filesystem Function */
+/* =================== */
 
 bool fs_init()
 {
@@ -163,6 +189,9 @@ bool fs_load_file_data(fs_file* file, char* buffer, int bufferSize)
 	int read = 0;
 	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 		uint8_t* payload = log_load_payload(entry);
+		if (payload == NULL) {
+			return false;
+		}
 		read += entry->payload_size;
 		if (read < bufferSize) {
 			memcpy(buffer, payload, entry->payload_size);
@@ -170,7 +199,8 @@ bool fs_load_file_data(fs_file* file, char* buffer, int bufferSize)
 		}
 		free(payload);
 	});
-	return false;
+	file->data_size = read;
+	return true;
 }
 
 int fs_file_size(fs_file* file)
@@ -179,7 +209,7 @@ int fs_file_size(fs_file* file)
 }
 
 bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
-{	
+{
 	int max_chunk_id = 0;
 	int num_of_data_chunks = 0;
 	if (file->data_chunks != NULL) {
@@ -187,10 +217,10 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 		log_entry* entry = NULL;
 		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 			log_invalidate_entry(entry->log_id);
-			if (entry->chunk_id > max_chunk_id) {
-				max_chunk_id = entry->chunk_id;
-			}
-			num_of_data_chunks++;
+		if (entry->chunk_id > max_chunk_id) {
+			max_chunk_id = entry->chunk_id;
+		}
+		num_of_data_chunks++;
 		});
 	}
 	// Check if we need to write a new header
@@ -255,31 +285,99 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 				entry->payload_size = left;
 				left -= left;
 			}
-			log_serialize_entry(entry, current);
+			log_serialize_entry(entry, (uint8_t*)current);
 			current = current + entry->payload_size;
 		}
 	});
-	
+
 	return true;
 }
 
-uint16_t log_get_next_obj_id() {
-	uint16_t temp = nextObjectID;
-	nextObjectID++;
-	return temp;
+bool fs_delete_file(const char * filename)
+{
+	fs_file* file = fs_open_file(filename);
+	if (file == NULL) {
+		return false;
+	}
+	if (file->header != NULL) {
+		log_invalidate_entry(file->header->log_id);
+		free(file->header);
+	}
+	if (file->data_chunks != NULL) {
+		log_entry* entry = NULL;
+		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
+			SGLIB_DL_LIST_DELETE(struct log_entry, file->data_chunks, entry, prev, next);
+			free(entry);
+		});
+	}
+	free(file->file_name);
+	free(file);
+	return true;
 }
 
-uint16_t log_get_next_log_id() {
-	uint16_t temp = nextEntryLocation;
-	nextEntryLocation++;
-	return temp;
+void fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
+{
+	log_entry* header;
+	log_entry* data;
+	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, header_list, header, prev, next, {
+		SGLIB_DL_LIST_DELETE(struct log_entry, header_list, header, prev, next);
+		int obj_id = header->object_id;
+		fs_file* file = calloc(1, sizeof(fs_file));
+		if (file == NULL) {
+			logger("FILESYSTEM", "Calloc return NULL fs_file while stitching.");
+			return;
+		}
+		file->header = header;
+		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, data_chunk_list, data, prev, next, {
+			if (data->object_id == obj_id) {
+				SGLIB_DL_LIST_DELETE(struct log_entry, data_chunk_list, data, prev, next);
+				SGLIB_DL_LIST_ADD(struct log_entry, file->data_chunks, data, prev, next);
+			}
+		});
+		SGLIB_DL_LIST_ADD(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
+	});
+	// TODO: Clean up garbage in data_chunk_list
+	return;
 }
+
+void fs_read_filenames_from_disk() {
+	// Loop over all fs_file in FILE_SYSTEM_LIST
+	// Grabbing the header entry and loading the payload for it
+	// store in fs_file.file_name
+	fs_file* file = NULL;
+	log_entry* header = NULL;
+	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct fs_file, FILE_SYSTEM_LIST, file, prev, next, {
+		header = file->header;
+		uint8_t* name = log_load_payload(header);
+		if (name == NULL) {
+			logger("FILESYSTEM", "Load payload returned NULL.");
+			return;
+		}
+		file->file_name = (const char*)name; // must free when deleting file from FILE_SYSTEM_LIST
+	});
+}
+
+void fs_sort_files_by_name()
+{
+	SGLIB_DL_LIST_SORT(struct fs_file, FILE_SYSTEM_LIST, FS_FILE_NAME_COMPARE, prev, next);
+}
+
+void fs_sort_files_data_chunks()
+{
+	fs_file* file = NULL;
+	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct fs_file, FILE_SYSTEM_LIST, file, prev, next, {
+		SGLIB_DL_LIST_SORT(struct log_entry, file->data_chunks, FS_DATA_CHUNK_COMPARE, prev, next);
+	});
+}
+
+/* ============= */
+/* Log Functions */
+/* ============= */
 
 bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
 	entry->log_id = log_get_next_log_id();
 	entry->status = 0xFFFF;
 	log_entry_set_used(entry);
-	log_entry_set_valid(entry);
 	uint32_t address = entry->log_id * LOG_ENTRY_SIZE;
 	int payload_size = entry->payload_size;
 	if (payload_size % 2 != 0) {
@@ -306,22 +404,6 @@ bool log_serialize_entry(log_entry* entry, uint8_t* payload) {
 	}
 	free(buffer);
 	return true;
-}
-
-// TODO
-void log_entry_set_used(log_entry * entry)
-{
-}
-
-// TODO
-void log_entry_set_valid(log_entry * entry)
-{
-}
-
-// TODO
-bool fs_delete_file(const char * filename)
-{
-	return false;
 }
 
 log_entry* log_deserialize_entry(int index)
@@ -357,6 +439,54 @@ log_entry* log_deserialize_entry(int index)
 	return entry;
 }
 
+uint8_t* log_load_payload(log_entry* entry) {
+	uint16_t payload_size = entry->payload_size;
+	uint16_t payload_size_fixed = payload_size;
+	uint8_t* buffer = calloc(payload_size, sizeof(uint8_t));
+	if (payload_size % 2 != 0) {
+		payload_size_fixed++;
+	}
+	if (payload_size_fixed >= LOG_ENTRY_MAX_PAYLOAD_SIZE) {
+		payload_size_fixed = LOG_ENTRY_MAX_PAYLOAD_SIZE;
+	}
+	uint16_t num_words = payload_size_fixed / 2;
+	uint32_t address = (entry->log_id * LOG_ENTRY_SIZE) + LOG_ENTRY_COMMON_SIZE;
+	for (int i = 0; i < payload_size;) {
+		uint32_t word = ReadWord(address);
+		if (word == INT32_MIN) {
+			logger("FILESYSTEM", "ReadWord returned INT32_MIN while reading payload.");
+			return NULL;
+		}
+		uint8_t* p = (uint8_t*)word;
+		buffer[i] = p[0];
+		i++;
+		if (i == payload_size) { // break early if we are reading odd amount of data
+			break;
+		}
+		buffer[i] = p[1];
+		i++;
+		address += 2;
+	}
+	return buffer;
+}
+
+uint16_t log_get_next_obj_id() {
+	uint16_t temp = nextObjectID;
+	nextObjectID++;
+	return temp;
+}
+
+uint16_t log_get_next_log_id() {
+	uint16_t temp = nextEntryLocation;
+	nextEntryLocation++;
+	return temp;
+}
+
+void log_entry_set_used(log_entry * entry)
+{
+	entry->status &= STATUS_USED_VALUE;
+}
+
 bool log_entry_is_used(log_entry * entry)
 {
 	return ((entry->status & STATUS_USED) == 0);
@@ -377,104 +507,24 @@ bool log_entry_is_data_chunk_type(log_entry * entry)
 	return (entry->type == TYPE_DATA_CHUNK);
 }
 
-void fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
-{
-	log_entry* header;
-	log_entry* data;
-	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, header_list, header, prev, next, {
-		SGLIB_DL_LIST_DELETE(struct log_entry, header_list, header, prev, next);
-		int obj_id = header->object_id;
-		fs_file* file = calloc(1, sizeof(fs_file));
-		if (file == NULL) {
-			logger("FILESYSTEM", "Calloc return NULL fs_file while stitching.");
-			return;
-		}
-		file->header = header;
-		SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, data_chunk_list, data, prev, next, {
-			if (data->object_id == obj_id) {
-				SGLIB_DL_LIST_DELETE(struct log_entry, data_chunk_list, data, prev, next);
-				SGLIB_DL_LIST_ADD(struct log_entry, file->data_chunks, data, prev, next);
-			}
-		});
-		// TODO: sort the file->data_chunks list
-		SGLIB_DL_LIST_ADD(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
-	});
-	// TODO: Clean up garbage in data_chunk_list
-	return;
-}
-
-void fs_read_filenames_from_disk() {
-	// Loop over all fs_file in FILE_SYSTEM_LIST
-	// Grabbing the header entry and loading the payload for it
-	// store in fs_file.file_name
-	fs_file* file = NULL;
-	log_entry* header = NULL;
-	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct fs_file, FILE_SYSTEM_LIST, file, prev, next, {
-		header = file->header;
-		uint8_t* name = log_load_payload(header);
-		if (name == NULL) {
-			logger("FILESYSTEM", "Load payload returned NULL.");
-			return;
-		}
-		file->file_name = (const char*)name; // must free when deleting file from FILE_SYSTEM_LIST
-	});
-}
-
-
-uint8_t* log_load_payload(log_entry* entry) {
-	uint16_t payload_size = entry->payload_size;
-	uint16_t payload_size_fixed = payload_size;
-	uint8_t* buffer = calloc(payload_size, sizeof(uint8_t));
-	if (payload_size % 2 != 0) {
-		payload_size_fixed++;
-	}
-	if (payload_size_fixed >= LOG_ENTRY_MAX_PAYLOAD_SIZE) {
-		payload_size_fixed = LOG_ENTRY_MAX_PAYLOAD_SIZE;
-	}
-	uint16_t num_words = payload_size_fixed / 2;
-	uint32_t address = (entry->log_id * LOG_ENTRY_SIZE) + LOG_ENTRY_COMMON_SIZE;
-	for (int i = 0; i < payload_size;) {
-		uint32_t word = ReadWord(address);
-		if (word == INT32_MIN) {
-			logger("FILESYSTEM", "ReadWord returned INT32_MIN while reading payload.");
-			return NULL;
-		}
-		uint8_t* p = NULL;
-		p = (uint8_t*)word;
-		buffer[i] = p[0];
-		i++;
-		if (i == payload_size) { // break early if we are reading odd amount of data
-			break;
-		}
-		buffer[i] = p[1];
-		i++;
-		address += 2;
-	}
-	return buffer;
-}
-
-
-#define FS_FILE_NAME_COMPARE(f1, f2) (strcmp(f1->file_name, f2->file_name))
-
-void fs_sort_files_by_name()
-{
-	SGLIB_DL_LIST_SORT(struct fs_file, FILE_SYSTEM_LIST, FS_FILE_NAME_COMPARE, prev, next);
-}
-
-#define FS_DATA_CHUNK_COMPARE(e1, e2) (e1->chunk_id - e2->chunk_id)
-
-void fs_sort_files_data_chunks()
-{
-	fs_file* file = NULL;
-	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct fs_file, FILE_SYSTEM_LIST, file, prev, next, {
-		SGLIB_DL_LIST_SORT(struct log_entry, file->data_chunks, FS_DATA_CHUNK_COMPARE, prev, next);
-	});
-}
-
-// TODO
 bool log_invalidate_entry(int index) {
-	return false;
+	uint32_t address = index * 256;
+	int32_t value = ReadWord(address);
+	if (value == INT32_MIN) {
+		logger("FILESYSTEM", "Couldn't invalidate log entry, error reading value on disk.");
+		return false;
+	}
+	value &= STATUS_INVALID_VALUE;
+	if (WriteWord(address, value) < 0) {
+		logger("FILESYSTEM", "Couldn't invalidate log entry, error writing value to disk.");
+		return false;
+	}
+	return true;
 }
+
+/* ============== */
+/* Test Functions */
+/* ============== */
 
 void log_first_entry() {
 	log_entry* entry = log_deserialize_entry(0);
