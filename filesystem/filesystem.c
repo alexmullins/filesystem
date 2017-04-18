@@ -52,7 +52,7 @@ typedef struct log_entry {
 } log_entry;
 
 struct fs_file {
-	const char* file_name;
+	char* file_name;
 	uint64_t data_size;
 	struct log_entry* header;
 	struct log_entry* data_chunks;
@@ -176,7 +176,10 @@ fs_file* fs_open_file(const char* filename)
 fs_file * fs_create_file(const char * filename)
 {
 	fs_file* file = calloc(1, sizeof(fs_file));
-	file->file_name = filename;
+	int str_len = strlen(filename) + 1;
+	char* buffer = calloc(1, str_len);
+	memcpy(buffer, filename, str_len);
+	file->file_name = buffer;
 	SGLIB_DL_LIST_ADD(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
 	return file;
 }
@@ -229,17 +232,17 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 		header->object_id = log_get_next_obj_id();
 		header->chunk_id = 0;
 		header->type = TYPE_HEADER;
-		header->payload_size = strlen(file->file_name) + 1;
+		header->payload_size = (uint16_t)strlen(file->file_name) + 1;
 		file->header = header;
 		log_serialize_entry(header, (uint8_t*)file->file_name); // will set the new log_id for us
 	}
 	// Calculate the num of needed data chunks to hold size of data.
-	int num_of_data_chunks_needed = size / LOG_ENTRY_MAX_PAYLOAD_SIZE;
+	uint64_t num_of_data_chunks_needed = size / LOG_ENTRY_MAX_PAYLOAD_SIZE;
 	if (size % LOG_ENTRY_MAX_PAYLOAD_SIZE != 0) {
 		num_of_data_chunks_needed++;
 	}
 	max_chunk_id++;
-	int diff = num_of_data_chunks_needed - num_of_data_chunks;
+	uint64_t diff = num_of_data_chunks_needed - num_of_data_chunks;
 	if (diff > 0) {
 		// need more chunks
 		for (int i = 0; i < diff; i++) {
@@ -273,7 +276,7 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 	}
 
 	char* current = buffer;
-	int left = size;
+	uint64_t left = size;
 	log_entry* entry = NULL;
 	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, file->data_chunks, entry, prev, next, {
 		if (left > 0) {
@@ -282,7 +285,7 @@ bool fs_flush_to_disk(fs_file* file, char* buffer, uint64_t size)
 				left -= LOG_ENTRY_MAX_PAYLOAD_SIZE;
 			}
 			else {
-				entry->payload_size = left;
+				entry->payload_size = (uint16_t)left;
 				left -= left;
 			}
 			log_serialize_entry(entry, (uint8_t*)current);
@@ -317,8 +320,8 @@ bool fs_delete_file(const char * filename)
 
 void fs_stitch_together(log_entry * header_list, log_entry * data_chunk_list)
 {
-	log_entry* header;
-	log_entry* data;
+	log_entry* header = NULL;
+	log_entry* data = NULL;
 	SGLIB_DL_LIST_MAP_ON_ELEMENTS(struct log_entry, header_list, header, prev, next, {
 		SGLIB_DL_LIST_DELETE(struct log_entry, header_list, header, prev, next);
 		int obj_id = header->object_id;
@@ -353,7 +356,7 @@ void fs_read_filenames_from_disk() {
 			logger("FILESYSTEM", "Load payload returned NULL.");
 			return;
 		}
-		file->file_name = (const char*)name; // must free when deleting file from FILE_SYSTEM_LIST
+		file->file_name = (char*)name; // must free when deleting file from FILE_SYSTEM_LIST
 	});
 }
 
