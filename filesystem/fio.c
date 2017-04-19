@@ -162,7 +162,7 @@ int CSC322_fread(void* buffer, size_t nBytes, CSC322FILE* stream)
 	}
 	// check we dont go over our limit
 	uint64_t futurePos = nBytes + stream->fpos;
-	if (futurePos >= stream->fsize) {
+	if (futurePos > stream->fsize) {
 		// read only up to the file size
 		futurePos = stream->fsize - 1;
 	}
