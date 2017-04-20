@@ -26,6 +26,10 @@ CSC322FILE* CSC322_fopen(const char* filename, const char* mode)
 	if (!fs_init()) {
 		return NULL;
 	}
+	size_t str_len = strlen(filename);
+	if (str_len > 64 || str_len == 0) {
+		return NULL;
+	}
 	if (strcmp(mode, "rb") == 0) { 
 		// "rb" attempt to open file for reading
 		// if exists, fail if nonexist.
@@ -224,7 +228,7 @@ int CSC322_fseek(CSC322FILE* stream, long offset, int origin)
 		if (offset > MAX_FILE_SIZE || offset < 0) {
 			return -1;
 		}
-		stream->fpos = offset;
+		stream->fpos = offset - 1;
 	}
 	// = 1 == SEEK_CUR
 	else if (origin == 1) {
@@ -232,7 +236,7 @@ int CSC322_fseek(CSC322FILE* stream, long offset, int origin)
 		if (temp > MAX_FILE_SIZE || offset < 0) {
 			return -1;
 		}
-		stream->fpos += offset;
+		stream->fpos += offset - 1;
 	}
 	// = 2 == SEEK_END
 	// http://en.cppreference.com/w/c/io/fseek
@@ -259,12 +263,16 @@ int CSC322_ftell(CSC322FILE* stream)
 	return (int)stream->fpos;
 }
 
-int CSC322_remove(const char* path)
+int CSC322_remove(const char* filename)
 {
+	size_t str_len = strlen(filename);
+	if (str_len > 64 || str_len == 0) {
+		return -1;
+	}
 	if (!fs_init()) {
 		return ERR_FILESYSTEM;
 	}
-	if (!fs_delete_file(path)) {
+	if (!fs_delete_file(filename)) {
 		return ERR_DELETE;
 	}
 	return 0;

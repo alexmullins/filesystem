@@ -112,6 +112,10 @@ void write_and_read_same() {
 	printf("test: write_and_read_same()\n");
 	printf("writing file...\n");
 	CSC322FILE* file = CSC322_fopen("hello.txt", "wb");
+	if (file == NULL) {
+		printf("Error opening file.\n");
+		return;
+	}
 	int ret = CSC322_fwrite("hellohellohello", 15, file);
 	if (ret < 0) {
 		printf("Error writing file.\n");
@@ -156,9 +160,61 @@ void write_and_read_large_file() {
 	for (int i = 0; i < SIZE; i++) {
 		buffer[i] = (int16_t)rand() % 100;
 	}
+	char filename[32];
+	CSC322FILE* file = NULL;
+	for (int i = 0; i < 1000; i++) {
+		sprintf_s(filename, 32, "hello-%d.txt", i);
+		printf("filename: %s\n", filename);
+		file = CSC322_fopen(filename, "wb");
+		if (file == NULL) {
+			printf("Error opening file.\n");
+			return;
+		}
+		int ret = CSC322_fwrite(buffer, SIZE, file);
+		if (ret < 0) {
+			printf("Error writing file.\n");
+			return;
+		}
+		ret = CSC322_fclose(file);
+		if (ret < 0) {
+			printf("Error closing file.\n");
+			return;
+		}
+		printf("reading file..\n");
+		uint8_t buffer2[SIZE] = { 0 };
+		file = CSC322_fopen(filename, "rb");
+		ret = CSC322_fread(buffer2, SIZE, file);
+		if (ret < 0) {
+			printf("Error writing file.\n");
+			return;
+		}
+		printf("ret: %d\n", ret);
+		if (memcmp(buffer, buffer2, SIZE) != 0) {
+			printf("Error dst != src.\n");
+		}
+		else {
+			printf("OK write-read works.\n\n");
+		}
+		ret = CSC322_fclose(file);
+		if (ret < 0) {
+			printf("Error closing file.\n");
+			return;
+		}
+	}
+	
+	return;
+}
 
+void write_read_delete_read() {
+	EraseAllSectors();
+	printf("test: write_read_delete_read()\n");
+	printf("writing file...\n");
 	CSC322FILE* file = CSC322_fopen("hello.txt", "wb");
-	int ret = CSC322_fwrite(buffer, SIZE, file);
+	if (file == NULL) {
+		printf("Error opening file.\n");
+		return;
+	}
+	int ret = CSC322_fwrite("hellohellohello", 15, file);
 	if (ret < 0) {
 		printf("Error writing file.\n");
 		return;
@@ -169,24 +225,50 @@ void write_and_read_large_file() {
 		return;
 	}
 	printf("reading file..\n");
-	uint8_t buffer2[SIZE] = { 0 };
 	file = CSC322_fopen("hello.txt", "rb");
-	ret = CSC322_fread(buffer2, SIZE, file);
+	char buf[15];
+	ret = CSC322_fread(buf, 15, file);
 	if (ret < 0) {
-		printf("Error writing file.\n");
+		printf("Error reading file.\n");
 		return;
 	}
 	printf("ret: %d\n", ret);
-	if (memcmp(buffer, buffer2, SIZE) != 0) {
+	if (memcmp("hellohellohello", buf, 15) != 0) {
 		printf("Error dst != src.\n");
 	}
 	else {
 		printf("OK write-read works.\n");
 	}
+	int fpos = CSC322_ftell(file);
+	printf("fpos: %d\n", fpos);
+	CSC322_fseek(file, 5, 0);
+	fpos = CSC322_ftell(file);
+	printf("fpos: %d\n", fpos);
+
 	ret = CSC322_fclose(file);
 	if (ret < 0) {
 		printf("Error closing file.\n");
 	}
+
+	// delete
+	ret = CSC322_remove("hello.txt");
+	if (ret < 0) {
+		printf("Error deleting file.\n");
+		return;
+	}
+	
+	// try read again - should get error opening
+	file = CSC322_fopen("hello.txt", "rb");
+	if (file == NULL) {
+		printf("OK file deleted successfully.\n");
+		return;
+	}
+	else {
+		CSC322_fclose(file);
+		printf("Error, file should be deleted.");
+		return;
+	}
+
 	return;
 }
 
@@ -204,9 +286,11 @@ void runFileSystemTests()
 
 	// fill up a file
 	
-	EraseAllSectors();
+	//EraseAllSectors();
 	//fill_up_invalid_entries();
-	write_and_read_large_file();
+	//write_and_read_same();
+	//write_and_read_large_file();
+	write_read_delete_read();
 }
 
 

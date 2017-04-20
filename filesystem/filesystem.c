@@ -325,6 +325,7 @@ bool fs_delete_file(const char * filename)
 			free(entry);
 		});
 	}
+	SGLIB_DL_LIST_DELETE(struct fs_file, FILE_SYSTEM_LIST, file, prev, next);
 	free(file->file_name);
 	free(file);
 	return true;
